@@ -1,7 +1,7 @@
 #define SDCARD_CS_PIN    10
 #define SDCARD_MOSI_PIN  7
 #define SDCARD_SCK_PIN   14
-#define MIN_DIST 100
+#define MIN_DIST 50
 
 #include <Audio.h>
 #include <SPI.h>
@@ -107,13 +107,13 @@ void go()
   String aux=String("GO ")+evn;
   Serial.println(aux);
   if (evn >= 0) {
-    Serial.println("DALE!!!!!!!!! -----------------------------------");
+    Serial.print("DALE!!!!!!!!! ---------------------------------->   ");
     players[evn]->set_gain(0.5);
         String filename = String("BOLT") + random(1,15) + ".WAV";
     players[evn]->set_file(filename);
     players[evn]->set_gains((double)incoming.vchan[0]/100.0,(double)incoming.vchan[1]/100.0,(double)incoming.vchan[2]/100.0,(double)incoming.vchan[3]/100.0);
     players[evn]->play();
-  
+    Serial.println(filename);
     aux=String("AudioMemory ")+AudioMemoryUsage() + String(" Max ") + AudioMemoryUsageMax();;
     Serial.println(aux);
   }  
@@ -187,10 +187,12 @@ void loop() {
   if (!background2.isPlaying() && (background1.lengthMillis()-background1.positionMillis())<crossfade)
   {
       background2.play(backgroundfile.c_str());
+      Serial.println(backgroundfile.c_str());
   }
   if (!background1.isPlaying() && (background2.lengthMillis()-background2.positionMillis())<crossfade)
   {
       background1.play(backgroundfile.c_str());
+      Serial.println(backgroundfile.c_str());
   }
   wait(time_interval);
 }
