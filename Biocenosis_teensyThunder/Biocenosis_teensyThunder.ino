@@ -43,8 +43,8 @@ AudioPlaySdWav background11;
 AudioPlaySdWav background12;
 //AudioPlaySdWav background21;
 //AudioPlaySdWav background22;
-String backgroundfile1 = "RUMBLE001.WAV";
-String backgroundfile2 = "RUMBLE002.WAV";
+String backgroundfile1 = "RUMB001.WAV";
+String backgroundfile2 = "RUMB002.WAV";
 int crossfade = 2000; //milliseconds
 float background_gain = 0.6;
 
