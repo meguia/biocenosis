@@ -1,7 +1,7 @@
 #define SDCARD_CS_PIN    10
 #define SDCARD_MOSI_PIN  7
 #define SDCARD_SCK_PIN   14
-#define MIN_DIST 50
+#define MIN_DIST 90
 
 #include <Audio.h>
 #include <SPI.h>
@@ -9,26 +9,16 @@
 #include <SerialFlash.h>
 #include "player2.h"
 
-#define QUAD
+AudioOutputI2SQuad       out;
+AudioControlSGTL5000     sgtl5000_1;
+AudioControlSGTL5000     sgtl5000_2;
 
-#ifdef QUAD
-
-  AudioOutputI2SQuad       out;
-  AudioControlSGTL5000     sgtl5000_1;
-  AudioControlSGTL5000     sgtl5000_2;
-
-#else
-
-  AudioOutputI2S out;
-  AudioControlSGTL5000 audioShield;
-
-#endif
 AudioConnection **mixer_out_patchCord;
 
-#define N_PLAYER 3
+#define N_PLAYER 2
 Player **players;
 
-unsigned int time_interval = 5;
+unsigned int time_interval = 10;
 unsigned long previousMillis = 0; 
 
 typedef struct struct_message {
@@ -47,11 +37,16 @@ bool newdata = false;
 float cumstorm=0.0;
 float threshold_storm=600.0;
 float stormdecay=0.98;
+float pnorm=100.0; // gain/100 global for players
 
-AudioPlaySdWav background1;
-AudioPlaySdWav background2;
-String backgroundfile = "RUMBLE10.WAV";
+AudioPlaySdWav background11;
+AudioPlaySdWav background12;
+//AudioPlaySdWav background21;
+//AudioPlaySdWav background22;
+String backgroundfile1 = "RUMBLE001.WAV";
+String backgroundfile2 = "RUMBLE002.WAV";
 int crossfade = 2000; //milliseconds
+float background_gain = 0.6;
 
 AudioMixer4 masterL;
 AudioMixer4 masterR;
@@ -68,32 +63,20 @@ AudioConnection event_mixer_patchCord01(player_mixerR, 0, masterR, 0);
 AudioConnection event_mixer_patchCord02(player_mixerL2, 0, masterL2, 0);
 AudioConnection event_mixer_patchCord03(player_mixerR2, 0, masterR2, 0);
 
-AudioConnection background_mixer_patchCord00(background1, 0, masterL, 1);
-AudioConnection background_mixer_patchCord01(background1, 0, masterR, 1);
-AudioConnection background_mixer_patchCord02(background1, 0, masterL2, 1);
-AudioConnection background_mixer_patchCord03(background1, 0, masterR2, 1);
+AudioConnection background_mixer_patchCord00(background11, 0, masterL, 1);
+AudioConnection background_mixer_patchCord01(background11, 1, masterR, 1);
+AudioConnection background_mixer_patchCord02(background12, 0, masterL2, 1);
+AudioConnection background_mixer_patchCord03(background12, 1, masterR2, 1);
 
-AudioConnection background_mixer_patchCord10(background2, 0, masterL, 2);
-AudioConnection background_mixer_patchCord11(background2, 0, masterR, 2);
-AudioConnection background_mixer_patchCord12(background2, 0, masterL2, 2);
-AudioConnection background_mixer_patchCord13(background2, 0, masterR2, 2);
+//AudioConnection background_mixer_patchCord10(background21, 0, masterL, 2);
+//AudioConnection background_mixer_patchCord11(background21, 1, masterR, 2);
+//AudioConnection background_mixer_patchCord12(background22, 0, masterL2, 2);
+//AudioConnection background_mixer_patchCord13(background22, 1, masterR2, 2);
 
-#ifdef QUAD
-
-  AudioConnection master_out_patchCord00(masterL, 0, out, 0);
-  AudioConnection master_out_patchCord11(masterR, 0, out, 1);
-  AudioConnection master_out_patchCord22(masterL2, 0, out, 2);
-  AudioConnection master_out_patchCord33(masterR2, 0, out, 3);
-
-#else
-
-  AudioConnection master_out_patchCord00(masterL, 0, out, 0);
-  AudioConnection master_out_patchCord11(masterR, 0, out, 1);
-
-#endif
-
-//AudioAnalyzePeak         peak1;
-//AudioConnection peak(masterL, 0, peak1, 0);
+AudioConnection master_out_patchCord00(masterL, 0, out, 0);
+AudioConnection master_out_patchCord11(masterR, 0, out, 1);
+AudioConnection master_out_patchCord22(masterL2, 0, out, 2);
+AudioConnection master_out_patchCord33(masterR2, 0, out, 3);
 
 void go()
 {
@@ -108,10 +91,9 @@ void go()
   Serial.println(aux);
   if (evn >= 0) {
     Serial.print("DALE!!!!!!!!! ---------------------------------->   ");
-    players[evn]->set_gain(0.5);
-        String filename = String("BOLT") + random(1,15) + ".WAV";
+    String filename = String("BOLT") + random(1,32) + ".WAV";
     players[evn]->set_file(filename);
-    players[evn]->set_gains((double)incoming.vchan[0]/100.0,(double)incoming.vchan[1]/100.0,(double)incoming.vchan[2]/100.0,(double)incoming.vchan[3]/100.0);
+    players[evn]->set_gains((double)incoming.vchan[0]/pnorm,(double)incoming.vchan[1]/pnorm,(double)incoming.vchan[2]/pnorm,(double)incoming.vchan[3]/pnorm);
     players[evn]->play();
     Serial.println(filename);
     aux=String("AudioMemory ")+AudioMemoryUsage() + String(" Max ") + AudioMemoryUsageMax();;
@@ -122,20 +104,13 @@ void go()
 void setup() { 
   AudioMemory(60);
 
-  #ifdef QUAD
 
-    sgtl5000_1.setAddress(LOW);
-    sgtl5000_1.enable();
-    sgtl5000_1.volume(0.8);
-    sgtl5000_2.setAddress(HIGH);
-    sgtl5000_2.enable();
-    sgtl5000_2.volume(0.8);
-
-  #else
-    audioShield.enable();
-    audioShield.volume(0.8);
-  
-  #endif
+  sgtl5000_1.setAddress(LOW);
+  sgtl5000_1.enable();
+  sgtl5000_1.volume(0.8);
+  sgtl5000_2.setAddress(HIGH);
+  sgtl5000_2.enable();
+  sgtl5000_2.volume(0.8);
 
   SPI.setMOSI(SDCARD_MOSI_PIN);
   SPI.setSCK(SDCARD_SCK_PIN);
@@ -147,8 +122,7 @@ void setup() {
     }
   }
 
-  Serial.begin(9600); 
-  while(!Serial);
+  Serial.begin(115200); 
   Serial1.begin(115200); // RTX2 TX2
   while(!Serial1);
 
@@ -163,7 +137,14 @@ void setup() {
   }
 
   Serial.println(String("Arrancanding Players ") + N_PLAYER);
-  background1.play(backgroundfile.c_str());
+
+  // Background
+  masterL.gain(1,background_gain);
+  masterR.gain(1,background_gain);
+  masterL2.gain(1,background_gain);
+  masterR2.gain(1,background_gain);
+  background11.play(backgroundfile1.c_str());
+  background12.play(backgroundfile2.c_str());
 }
 
 void loop() {
@@ -184,16 +165,27 @@ void loop() {
     //previousMillis = currentMillis;
     cumstorm *= stormdecay;
   //}
-  if (!background2.isPlaying() && (background1.lengthMillis()-background1.positionMillis())<crossfade)
-  {
-      background2.play(backgroundfile.c_str());
-      Serial.println(backgroundfile.c_str());
+  //looped
+  if (background11.isPlaying() == false) {
+    Serial.println("Start playing 12");
+    background11.play(backgroundfile1.c_str());
   }
-  if (!background1.isPlaying() && (background2.lengthMillis()-background2.positionMillis())<crossfade)
-  {
-      background1.play(backgroundfile.c_str());
-      Serial.println(backgroundfile.c_str());
+  if (background12.isPlaying() == false) {
+    Serial.println("Start playing 12");
+    background12.play(backgroundfile2.c_str());
   }
+//  if (!background21.isPlaying() && (background11.lengthMillis()-background11.positionMillis())<crossfade)
+//  {
+//      background21.play(backgroundfile1.c_str());
+//      background22.play(backgroundfile2.c_str());
+//      Serial.println(backgroundfile1.c_str());
+//  }
+//  if (!background11.isPlaying() && (background21.lengthMillis()-background21.positionMillis())<crossfade)
+//  {
+//      background11.play(backgroundfile1.c_str());
+//      background12.play(backgroundfile2.c_str());
+//      Serial.println(backgroundfile1.c_str());
+//  }
   wait(time_interval);
 }
 

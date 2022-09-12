@@ -34,10 +34,10 @@ int nbridge[11] = {123,124,125,126,127,48,49,50,51,56,57};
 int nstop[3] = {123,51,156};
 
 // MONITORING and SERIAL Communication
-boolean Monitor_values = true; // print values to serial
+boolean Monitor_values = false; // print values to serial
 boolean Monitor_train = false; // print train state to serial
 boolean Monitor_parameters = false; // print parameters values to serial
-boolean Monitor_message = false; // print Arduino serial message from sensors to serial
+boolean Monitor_message = true; // print Arduino serial message from sensors to serial
 boolean debug = false; 
 int argv=0;
 int astep;
@@ -417,7 +417,11 @@ void getIncomingBytes() {
   if(inByte == 255 || messN > NBYTES){
     messageComplete = true;
     if (Monitor_message) {
-      for(int i=0; i<16; i++) {
+      for(int i=0; i<8; i++) {
+        Serial.print(message[i]);
+      }
+      Serial.print(":");
+      for(int i=8; i<16; i++) {
         Serial.print(message[i]);
       }
       Serial.print(" | ");

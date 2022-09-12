@@ -10,7 +10,6 @@ class Player
        Player();
       ~Player();
 
-      AudioAmplifier amp;
       AudioAmplifier gainL;
       AudioAmplifier gainR;      
       AudioAmplifier gainL2;
@@ -28,8 +27,6 @@ class Player
   
       void play();
       void set_file(String n);
-      void set_gain(double g);
-      void set_location(double x, double y);
       void set_gains(double g1,double g2,double g3,double g4);
       bool isPlaying();
 
