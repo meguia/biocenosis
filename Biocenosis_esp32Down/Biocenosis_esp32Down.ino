@@ -8,8 +8,8 @@
 uint8_t broadcastAddress[] = {0x78, 0x21, 0x84, 0x7F, 0x1D, 0x88}; // ARRIBA
 //uint8_t broadcastAddress[] = {0x24, 0x0A, 0xC4, 0x80, 0x5B, 0xAC}; // LIBRE
 float cumstorm=0.0;
-float threshold_storm=600.0;
-float stormdecay=0.98;
+float threshold_storm=7.0;
+float stormdecay=0.97;
 
 typedef struct struct_message {
     uint8_t intensity; // intensity value between 0 and 100
@@ -104,10 +104,9 @@ void loop() {
   if (currentMillis - previousMillis >= time_interval) {
     previousMillis = currentMillis;
     cumstorm *= stormdecay;
-    Serial.println(cumstorm*100);
+    Serial.println(cumstorm);
     if (cumstorm>threshold_storm) {
-      Serial2.write(message_blackout[0]);
-      Serial2.write(message_blackout[1]);
+      Serial2.write(1);
       cumstorm = 0.0;
     }
   }  

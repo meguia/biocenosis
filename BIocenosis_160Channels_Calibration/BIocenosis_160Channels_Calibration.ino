@@ -184,6 +184,9 @@ void set_channel(PCA9685 ledArray, int module, int channel, int argv) {
   Serial.print(":");
   Serial.print(nchan);
   Serial.print(">");
+  if (argv==0) {
+    argv = cal[nchan];
+  }
   Serial.print(argv);
   Serial.println();
   ledArray.setPWM(channel, 0, argv);  

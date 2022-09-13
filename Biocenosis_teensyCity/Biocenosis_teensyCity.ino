@@ -37,7 +37,7 @@ int nstop[3] = {123,51,156};
 boolean Monitor_values = false; // print values to serial
 boolean Monitor_train = false; // print train state to serial
 boolean Monitor_parameters = false; // print parameters values to serial
-boolean Monitor_message = true; // print Arduino serial message from sensors to serial
+boolean Monitor_message = false; // print Arduino serial message from sensors to serial
 boolean debug = false; 
 int argv=0;
 int astep;
@@ -49,12 +49,12 @@ String command = String(4);
 boolean commandComplete = false;
 int NBYTES=32;
 byte message[32];
-byte message2[2];
+//byte message2[2];
 boolean messageComplete = false;
 boolean messageComplete2 = false;
 boolean Blackout;
 int messN = 0;
-int messN2 = 0;
+//int messN2 = 0;
 unsigned long previousMillis = 0; 
 
 // COUPLED MAP PARAMETERS
@@ -440,21 +440,20 @@ void getIncomingBytes() {
 
 void getIncomingBytes2() {
   byte inByte = Serial2.read();
-  if(inByte == 255 || messN2 > 2){
+  
     messageComplete2 = true;
-    if (Monitor_message) {
+    if (1) {
       Serial.print("BLACKOUT!!!!!! ");
-      for(int i=0; i<2; i++) {
-        Serial.print(message2[i]);
-        Serial.print(",");
-      }
+      
+        Serial.print(inByte);
+
       Serial.println();     
     }
-    messN2 = 0;
-  } else {
-    message2[messN2] = inByte;
-    messN2++;
-  }
+    //messN2 = 0;
+  //} else {
+    //message2[messN2] = inByte;
+    //messN2++;
+  //}
 }
 
 void processMessage() {
