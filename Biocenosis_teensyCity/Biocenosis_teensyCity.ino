@@ -37,8 +37,9 @@ int nstop[3] = {123,51,156};
 boolean Monitor_values = false; // print values to serial
 boolean Monitor_train = false; // print train state to serial
 boolean Monitor_parameters = false; // print parameters values to serial
-boolean Monitor_message = false; // print Arduino serial message from sensors to serial
+boolean Monitor_message = true; // print Arduino serial message from sensors to serial
 boolean debug = false; 
+int Debug_channel = -1; // print values of this channel only (-1 for no debug)
 int argv=0;
 int astep;
 long i2s_speed = 100;
@@ -67,19 +68,20 @@ float b = 0.035;
 
 // SIMPLEX NOISE PARAMETERS
 int scale = 220; 
-int time_step = 3; 
-float slope = 1;
+int time_step = 4; 
+float slope = 100;
 uint8_t mean = 128;
 unsigned long TIME = 0;
 
 // TIME SCALE
-unsigned int time_interval = 400;
+unsigned int time_interval = 100;
 unsigned long COUNT = 0;
 
 //TRAIN SPEED  PSEUDOPERIOD in seconds
-float tspeed = 0.3;
+float tspeed = 0.2;
 int tperiod = 128; //mean time interval between trains
 boolean istrain=false;
+boolean IS_BLACK = false;
 float lastrain=0;
 int track=0;
 int bridge=0;
@@ -88,12 +90,12 @@ int STOPMIN = 600; //minimum dim value of station
 int YMIN = 30; // minimum dim intensity for target Can be lowered during blackouts
 
 //SLUGISHNESS
-int SLUG1 = 8;
-int SLUG2 = 15;
+int SLUG1 = 10;
+int SLUG2 = 18;
 
 //SENSITIVITY TO PUBLIC
 float sensitivity_ocup = 2.0;
-float sensitivity_mov = 2.0;
+float sensitivity_mov = 0.0;
 float sensitivity_inverse = 0.0;
 
 const int N=160;  // Total number of channels NCHAN*NMOD
@@ -130,6 +132,9 @@ const byte sw [] PROGMEM = {
 #include "sw.h"
 }; //Sensor weight
 
+//////////////////////////////////////////////////////////////////////////////////
+//                     S E T U P
+//////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
   // USB Serial
@@ -169,13 +174,17 @@ void setup() {
   LEDARR[8] = ledArray8;
   LEDARR[9] = ledArray9;
   for (int imod=0; imod<NMOD; imod++) {
-    is_connected(LEDARR[imod],imod);
+    //is_connected(LEDARR[imod],imod);
   }
-  is_connected(ledArray10,10);
+  //is_connected(ledArray10,10);
   delay(3000);
   //Serial.println("ALL ZERO");
   all_value(0);
   delay(1000);
+  //all to maximum slowly
+  state_max_slow();
+  delay(2000);
+  //all to random 
   state_random();
   // zona industrial
   for (int i=0; i<16; i++) {
@@ -186,6 +195,10 @@ void setup() {
   }  
   //Serial.println("READY to ROCK");
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//                    MAIN LOOOOOOOOOOOOOOOOOOOOOP
+//////////////////////////////////////////////////////////////////////////////////////////
 
 void loop() {
   
@@ -237,6 +250,8 @@ void loop() {
   }
 }
 
+//////////////////////////////////////////////   WRITE LED
+
 void write_led(){
   for(int imod = 0; imod < NMOD; imod++) {
       for(int ichan = 0; ichan < NCHAN; ichan++) {
@@ -251,10 +266,21 @@ void write_led(){
         if (z[n]<0) z[n]=0;
         if (z[n]>4095) z[n]=4095;
         LEDARR[imod].setPWM(ichan, 0, z[n]); 
+        if (n==Debug_channel) {
+          Serial.print(x[n]);
+          Serial.print(",");
+          Serial.print(y[n]);
+          Serial.print(",");
+          Serial.println(z[n]);
+          //Serial.print(",");
+          //Serial.print(ymin[n]);
+          //Serial.print(",");
+          //Serial.println(cal[n]);
+        }
       }
   }
 }
-
+/////////////////////////////////////////////   TRAIN
 void trainStep() {
   if (istrain==false && lastrain>tperiod) { 
     //Serial.println("TREN");
@@ -313,27 +339,36 @@ void trainStep() {
   }
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//   UPDATE BUILDINGS
+/////////////////////////////////////////////////////////////////////////////////////////////////
+
 void updateBuildings() {
-  
-  // MANUAL BLACKOUT!! -> change!!
   if(Blackout) {
-    //inicio 
-    if (COUNT>3000) {
+    //inicio
+    //Serial.println(COUNT); 
+    if (COUNT>300) {
+      Serial.println("blackout!!!!!!!!!!");
       for (int n=0;n<N;n++) {
         x[n]=0.01;
         ymin[n]=5;
+        SLUG1 = 5;
       }  
       COUNT = 0;
+      IS_BLACK = true;
     }
-    if (ymin[1]==5 && COUNT>100) {
+    Blackout = false; // no blackout
+  }  
+  if (IS_BLACK && COUNT>60) {
+      //Serial.println("RECOVER------------");
       for (int n=0;n<N;n++) { 
         ymin[n] = ymin0[n];
-        x[n]+=10.0;
-        z[n]=y[n];
+        SLUG1 = 10;
+        x[n]+=random(500)+10.0;
       }
-      Blackout = false;
-    }  
-  }
+      //Serial.println(ymin[1]);
+      IS_BLACK = false;
+  }  
  
   // MAIN LOOP OVER N CHANNELS
   // TODO this also sets the train channels that are overwritten by trainStep  
@@ -364,12 +399,13 @@ void updateBuildings() {
     // 2. SIMPLEX NOISE
     uint8_t temp = inoise8(coord[n*2]*scale,coord[n*2+1]*scale,0.1*TIME);
     float sn = sigmoid(temp,slope,mean);
-    astep = (int) sn*x[n];
+    astep = (int)(sn*x[n]);
     if (astep>999) {
       astep=999;
     }
     if (Monitor_values) {
-      Serial.print(astep);
+      //Serial.print(100*log10(((float)100.0*z[n])/((float)cal[n])));
+      Serial.print(100*log10(((float)100.0*z[n])));
       Serial.print(",");
       //Serial.print(y[n]);
     }  
@@ -402,6 +438,8 @@ void updateBuildings() {
     Serial.println();
   }
 }  
+
+/////////////////////////////////////////////// COMMUNICATION
 
 void getIncomingChars() {
   char inChar = Serial.read();
@@ -440,20 +478,14 @@ void getIncomingBytes() {
 
 void getIncomingBytes2() {
   byte inByte = Serial2.read();
-  
-    messageComplete2 = true;
-    if (1) {
-      Serial.print("BLACKOUT!!!!!! ");
-      
-        Serial.print(inByte);
-
-      Serial.println();     
-    }
-    //messN2 = 0;
-  //} else {
-    //message2[messN2] = inByte;
-    //messN2++;
-  //}
+  messageComplete2 = true;
+  Blackout = true;
+  if (Monitor_message) {
+    Serial.print("BLACKOUT!!!!!! ");
+    Serial.print(inByte);
+    Serial.print(" > ");
+    Serial.println(Blackout);     
+  }
 }
 
 void processMessage() {
@@ -538,6 +570,8 @@ void processCommand() {
   commandComplete = false;  
 }
 
+////////////////////////////////////////////////////    TESTS
+
 void is_connected(PCA9685 ledArray, int n) {
   Serial.print("Starting Ledarray ");
   Serial.print(n);
@@ -575,6 +609,18 @@ void state_random(){
     astep = (int) x[n];
     y[n] = (int) (amp[astep]*cal[n]) + 30;
     z[n] = y[n];
+  }
+}
+
+void state_max_slow(){
+  for (int val=111; val<1000; val+=111) {
+    for (int n=0;n<N;n++) {
+      x[n] = val;
+      astep = (int) x[n];
+      y[n] = (int) (amp[astep]*cal[n]) + 30;
+    }
+    write_led();
+    delay(500);
   }
 }
 

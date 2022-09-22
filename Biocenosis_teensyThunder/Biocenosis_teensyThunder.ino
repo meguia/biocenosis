@@ -41,12 +41,10 @@ float pnorm=100.0; // gain/100 global for players
 
 AudioPlaySdWav background11;
 AudioPlaySdWav background12;
-//AudioPlaySdWav background21;
-//AudioPlaySdWav background22;
-String backgroundfile1 = "RUMB001.WAV";
-String backgroundfile2 = "RUMB002.WAV";
-int crossfade = 2000; //milliseconds
-float background_gain = 0.6;
+String backgroundfile1 = "THUNDER001.WAV";
+String backgroundfile2 = "THUNDER002.WAV";
+int crossfade = 1000; //milliseconds
+float background_gain = 0.5;
 
 AudioMixer4 masterL;
 AudioMixer4 masterR;
@@ -101,16 +99,36 @@ void go()
   }  
 }
 
+void go_gap()
+{
+  int evn = -1;
+  for (int i=0;i<N_PLAYER; i++) {
+    if (!players[i]->isPlaying()) {
+      evn = i;
+      break;
+    }
+  }
+  String aux=String("GO ")+evn;
+  Serial.println(aux);
+  if (evn >= 0) {
+    Serial.print("DALE!!!!!!!!! ---------------------------------->   ");
+    String filename = "GAP.WAV";
+    players[evn]->set_file(filename);
+    players[evn]->play();
+    Serial.println(filename);
+    aux=String("AudioMemory ")+AudioMemoryUsage() + String(" Max ") + AudioMemoryUsageMax();;
+    Serial.println(aux);
+  }  
+}
+
 void setup() { 
   AudioMemory(60);
-
-
   sgtl5000_1.setAddress(LOW);
   sgtl5000_1.enable();
-  sgtl5000_1.volume(0.8);
+  sgtl5000_1.volume(0.95);
   sgtl5000_2.setAddress(HIGH);
   sgtl5000_2.enable();
-  sgtl5000_2.volume(0.8);
+  sgtl5000_2.volume(0.95);
 
   SPI.setMOSI(SDCARD_MOSI_PIN);
   SPI.setSCK(SDCARD_SCK_PIN);
@@ -174,18 +192,10 @@ void loop() {
     Serial.println("Start playing 12");
     background12.play(backgroundfile2.c_str());
   }
-//  if (!background21.isPlaying() && (background11.lengthMillis()-background11.positionMillis())<crossfade)
-//  {
-//      background21.play(backgroundfile1.c_str());
-//      background22.play(backgroundfile2.c_str());
-//      Serial.println(backgroundfile1.c_str());
-//  }
-//  if (!background11.isPlaying() && (background21.lengthMillis()-background21.positionMillis())<crossfade)
-//  {
-//      background11.play(backgroundfile1.c_str());
-//      background12.play(backgroundfile2.c_str());
-//      Serial.println(backgroundfile1.c_str());
-//  }
+  if ((background11.lengthMillis()-background11.positionMillis())<crossfade)
+  {
+      go_gap();
+  }
   wait(time_interval);
 }
 

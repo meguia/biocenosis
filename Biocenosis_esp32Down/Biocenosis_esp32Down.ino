@@ -1,14 +1,14 @@
 #include <esp_now.h>
 #include <WiFi.h>
 //78:21:84:7D:67:A8 ABAJO
-//78:21:84:7F:1D:88 ARRIBA
+//78:21:84:7F:1D:88 ARRIBAx
 
 
 //uint8_t broadcastAddress[] = {0x78, 0x21, 0x84, 0x7D, 0x67, 0xA8}; // ABAJO
 uint8_t broadcastAddress[] = {0x78, 0x21, 0x84, 0x7F, 0x1D, 0x88}; // ARRIBA
 //uint8_t broadcastAddress[] = {0x24, 0x0A, 0xC4, 0x80, 0x5B, 0xAC}; // LIBRE
 float cumstorm=0.0;
-float threshold_storm=7.0;
+float threshold_storm=5.0;
 float stormdecay=0.97;
 
 typedef struct struct_message {
